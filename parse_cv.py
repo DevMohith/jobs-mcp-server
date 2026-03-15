@@ -1,179 +1,315 @@
-# ???????Doc parser??????
-# from docx import Document
-# def read_word_cv(file_path):
-#     doc = Document(file_path)
-    
-#     # print all paragraphs in the document
-#     for i, para in enumerate(doc.paragraphs):
-#         if para.text.strip():  # Only print non-empty paragraphs
-#             print(f"[{i}] style:'{para.style.name}' | text:'{para.text}'")
-            
-# read_word_cv("cv.docx")
-
+# parse_cv.py
+#
+# Reusable CV parser — called by app.py when user uploads a .docx
+# Input:  path to .docx file
+# Output: cv dict (same structure as before)
 
 import json
+import re
+from pathlib import Path
 from docx import Document
 
-def parse_cv(path):
-    doc = Document(path)
-    
+
+def extract_text_blocks(doc) -> list[dict]:
+    """Extract all non-empty paragraphs with their style."""
+    blocks = []
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if text:
+            blocks.append({
+                "text":  text,
+                "style": para.style.name
+            })
+    return blocks
+
+
+def find_section(blocks, section_name) -> list[str]:
+    """Find all bullet points under a section heading."""
+    result = []
+    inside = False
+    for b in blocks:
+        if b["text"].lower().strip() == section_name.lower():
+            inside = True
+            continue
+        if inside:
+            # stop at next section heading
+            if b["style"] in ["Heading 1", "Heading 2", "Heading 3"] or (
+                b["text"] in ["Experience", "Projects", "Education",
+                               "Competencies", "Achievements & Certifications",
+                               "Skills", "Summary"]
+            ):
+                break
+            result.append(b["text"])
+    return result
+
+
+def parse_skills_line(line: str, prefix: str) -> list[str]:
+    """Parse 'Programming Languages: Python, JS, ...' into a list."""
+    if prefix in line:
+        raw = line.replace(prefix, "").strip()
+        # clean up parenthetical groups that got split by commas
+        # e.g. "ABAP (CDS, RAP, OData)" stays together
+        items = []
+        current = ""
+        depth = 0
+        for char in raw:
+            if char == "(":
+                depth += 1
+                current += char
+            elif char == ")":
+                depth -= 1
+                current += char
+            elif char == "," and depth == 0:
+                if current.strip():
+                    items.append(current.strip())
+                current = ""
+            else:
+                current += char
+        if current.strip():
+            items.append(current.strip())
+        return items
+    return []
+
+
+def parse_cv_from_docx(docx_path: str) -> dict:
+    """
+    Parse a .docx CV file into a structured dict.
+    Works generically — doesn't assume exact paragraph indices.
+    """
+    doc    = Document(docx_path)
+    blocks = extract_text_blocks(doc)
+    texts  = [b["text"] for b in blocks]
+
     cv = {
-        "name": "Mohith Tummala",
-        "title": "AI/ML Engineer – Platform Engineering",
-        "location": "St. Leon-Rot, Deutschland",
-        "summary": "",
+        "name":       "",
+        "title":      "",
+        "location":   "",
+        "summary":    "",
         "skills": {
             "programming_languages": [],
-            "frameworks_libraries": [],
-            "databases": [],
-            "ai_ml": [],
-            "cloud_devops": [],
-            "data_engineering": []
+            "frameworks_libraries":  [],
+            "databases":             [],
+            "ai_ml":                 [],
+            "cloud_devops":          [],
+            "data_engineering":      []
         },
-        "experience": [],
-        "projects": [],
-        "education": [],
+        "experience":     [],
+        "projects":       [],
+        "education":      [],
         "certifications": [],
-        "github": "https://github.com/DevMohith",
-        "preferred_job_titles": [
-            "AI Engineer",
-            "ML Engineer", 
-            "Backend Engineer",
-            "Platform Engineer",
-            "AI/ML Engineer"
-        ],
-        "preferred_location": "Deutschland"
+        "github":         "",
+        "preferred_job_titles": [],
+        "preferred_location":   ""
     }
 
-    paragraphs = [p for p in doc.paragraphs if p.text.strip()]
+    # ── name + title (first two non-empty blocks) ─────────────────────────────
+    if len(texts) > 0:
+        cv["name"]  = texts[0].strip()
+    if len(texts) > 1:
+        cv["title"] = texts[1].strip()
 
-    # --- summary (index 6 in your output) ---
-    cv["summary"] = paragraphs[2].text.strip()
+    # ── summary (longest paragraph near the top, before Experience) ───────────
+    for b in blocks[:15]:
+        if len(b["text"]) > 100:
+            cv["summary"] = b["text"]
+            break
 
-    # --- skills (indices 37-42) ---
-    for para in paragraphs:
-        t = para.text.strip()
-        if t.startswith("Programming Languages:"):
-            cv["skills"]["programming_languages"] = [
-                s.strip() for s in t.replace("Programming Languages:", "").split(",")
-            ]
-        elif t.startswith("Frameworks & Libraries:"):
-            cv["skills"]["frameworks_libraries"] = [
-                s.strip() for s in t.replace("Frameworks & Libraries:", "").split(",")
-            ]
-        elif t.startswith("Databases:"):
-            cv["skills"]["databases"] = [
-                s.strip() for s in t.replace("Databases:", "").split(",")
-            ]
-        elif t.startswith("AI/ML:"):
-            cv["skills"]["ai_ml"] = [
-                s.strip() for s in t.replace("AI/ML:", "").split(",")
-            ]
-        elif t.startswith("Cloud and DevOps:"):
-            cv["skills"]["cloud_devops"] = [
-                s.strip() for s in t.replace("Cloud and DevOps:", "").split(",")
-            ]
-        elif t.startswith("Data Engineering:"):
-            cv["skills"]["data_engineering"] = [
-                s.strip() for s in t.replace("Data Engineering:", "").split(",")
-            ]
+    # ── skills ────────────────────────────────────────────────────────────────
+    skill_map = {
+        "Programming Languages:": "programming_languages",
+        "Frameworks & Libraries:": "frameworks_libraries",
+        "Databases:":              "databases",
+        "AI/ML:":                  "ai_ml",
+        "Cloud and DevOps:":       "cloud_devops",
+        "Data Engineering:":       "data_engineering",
+    }
 
-    # --- experience ---
-    cv["experience"] = [
-        {
-            "role": "AI Engineer - Process AI Platform Engineering (Working Student)",
-            "company": "SAP Signavio",
-            "location": "St. Leon-Rot, Deutschland",
-            "period": "09/2025–Current",
-            "bullets": [
-                paragraphs[i].text.strip()
-                for i in range(len(paragraphs))
-                if paragraphs[i].text.strip() in [
-                    doc.paragraphs[10].text.strip(),
-                    doc.paragraphs[11].text.strip(),
-                    doc.paragraphs[12].text.strip(),
-                    doc.paragraphs[13].text.strip(),
-                ]
-            ]
-        },
-        {
-            "role": "Full Stack Developer - SAP CPIT (Working Student)",
-            "company": "SAP SE",
-            "location": "Walldorf, Deutschland",
-            "period": "03/2025–09/2025",
-            "bullets": [
-                doc.paragraphs[16].text.strip(),
-                doc.paragraphs[17].text.strip(),
-                doc.paragraphs[18].text.strip(),
-                doc.paragraphs[19].text.strip(),
-            ]
-        },
-        {
-            "role": "Junior DevOps Engineer",
-            "company": "Diebold Nixdorf",
-            "location": "Hyderabad, India",
-            "period": "03/2022–05/2023",
-            "bullets": [
-                doc.paragraphs[23].text.strip(),
-                doc.paragraphs[24].text.strip(),
-                doc.paragraphs[25].text.strip(),
-                doc.paragraphs[26].text.strip(),
-            ]
-        }
-    ]
+    for text in texts:
+        for prefix, key in skill_map.items():
+            if text.startswith(prefix):
+                cv["skills"][key] = parse_skills_line(text, prefix)
 
-    # --- projects ---
-    cv["projects"] = [
-        {
-            "name": "AI Workflow Orchestration Runtime Engine (Master Thesis)",
-            "tech": doc.paragraphs[29].text.strip(),
-            "description": doc.paragraphs[30].text.strip() + " " + doc.paragraphs[31].text.strip()
-        },
-        {
-            "name": "Cloud-Native Kubernetes Autoscaling Backend System",
-            "tech": doc.paragraphs[33].text.strip(),
-            "description": doc.paragraphs[34].text.strip()
-        }
-    ]
+    # ── github ────────────────────────────────────────────────────────────────
+    for text in texts:
+        if "github.com" in text.lower():
+            # extract URL
+            match = re.search(r'https?://github\.com/\S+', text)
+            if match:
+                cv["github"] = match.group(0)
 
-    # --- education ---
-    cv["education"] = [
-        {
-            "degree": "M.S. in Applied Computer Science",
-            "university": "SRH University Heidelberg, Deutschland",
-            "period": "04/2024–present",
-            "grade": "1.7",
-            "specialization": "Software Architecture and Artificial Intelligence"
-        },
-        {
-            "degree": "Bachelor of Science in Computer Science",
-            "university": "Osmania University Hyderabad, India",
-            "period": "05/2018–09/2021",
-            "grade": "8.25/10",
-            "specialization": "Software Development with C++, LinuxOS and Machine Learning"
-        }
-    ]
+    # ── experience ────────────────────────────────────────────────────────────
+    # find experience section and parse role blocks
+    exp_section = False
+    current_exp = None
 
-    # --- certifications ---
-    cv["certifications"] = [
-        doc.paragraphs[53].text.strip(),
-        doc.paragraphs[54].text.strip(),
-        doc.paragraphs[55].text.strip(),
-        doc.paragraphs[56].text.strip(),
-        doc.paragraphs[57].text.strip(),
-        doc.paragraphs[58].text.strip(),
-        doc.paragraphs[59].text.strip(),
-    ]
+    for i, b in enumerate(blocks):
+        t = b["text"]
+
+        # detect Experience section start
+        if t.lower() == "experience":
+            exp_section = True
+            continue
+
+        # detect Experience section end
+        if exp_section and t.lower() in ["projects", "competencies",
+                                          "education", "skills",
+                                          "achievements & certifications"]:
+            if current_exp:
+                cv["experience"].append(current_exp)
+                current_exp = None
+            exp_section = False
+            continue
+
+        if not exp_section:
+            continue
+
+        # detect a new role (contains a year pattern like 2022 or "Current")
+        year_pattern = re.search(r'(20\d{2}|Current|current|Present|present)', t)
+        if year_pattern and len(t) > 20 and b["style"] in ["Normal", "Heading 2"]:
+            if current_exp:
+                cv["experience"].append(current_exp)
+            current_exp = {
+                "role":        t,
+                "company":     blocks[i+1]["text"] if i+1 < len(blocks) else "",
+                "location":    blocks[i+1]["text"] if i+1 < len(blocks) else "",
+                "period":      "",
+                "bullets":     []
+            }
+        elif current_exp and b["style"] == "List Paragraph":
+            current_exp["bullets"].append(t)
+
+    if current_exp:
+        cv["experience"].append(current_exp)
+
+    # ── projects ──────────────────────────────────────────────────────────────
+    proj_section = False
+    current_proj = None
+
+    for b in blocks:
+        t = b["text"]
+
+        if t.lower() == "projects":
+            proj_section = True
+            continue
+
+        if proj_section and t.lower() in ["competencies", "education",
+                                           "skills", "experience",
+                                           "achievements & certifications"]:
+            if current_proj:
+                cv["projects"].append(current_proj)
+                current_proj = None
+            proj_section = False
+            continue
+
+        if not proj_section:
+            continue
+
+        # tech stack line (comma-separated technologies)
+        if current_proj and "tech" not in current_proj and "," in t and len(t.split(",")) > 2:
+            current_proj["tech"] = t
+        elif current_proj and t.startswith("•"):
+            current_proj["description"] = current_proj.get("description", "") + " " + t
+        elif b["style"] == "Normal" and len(t) > 5:
+            if current_proj:
+                cv["projects"].append(current_proj)
+            current_proj = {"name": t, "tech": "", "description": ""}
+
+    if current_proj:
+        cv["projects"].append(current_proj)
+
+    # ── education ─────────────────────────────────────────────────────────────
+    edu_section = False
+    current_edu = None
+
+    for b in blocks:
+        t = b["text"]
+
+        if t.lower() == "education":
+            edu_section = True
+            continue
+
+        if edu_section and t.lower() in ["competencies", "projects",
+                                          "skills", "experience",
+                                          "achievements & certifications"]:
+            if current_edu:
+                cv["education"].append(current_edu)
+                current_edu = None
+            edu_section = False
+            continue
+
+        if not edu_section:
+            continue
+
+        year_pattern = re.search(r'(20\d{2}|present|Present)', t)
+        if year_pattern and len(t) > 10:
+            if current_edu:
+                cv["education"].append(current_edu)
+            current_edu = {
+                "degree":         t,
+                "university":     "",
+                "period":         "",
+                "grade":          "",
+                "specialization": ""
+            }
+        elif current_edu:
+            if "university" not in current_edu or not current_edu["university"]:
+                current_edu["university"] = t
+            elif b["style"] == "List Paragraph":
+                current_edu["specialization"] = t
+
+    if current_edu:
+        cv["education"].append(current_edu)
+
+    # ── certifications ────────────────────────────────────────────────────────
+    cert_section = False
+    for b in blocks:
+        t = b["text"]
+        if "achievements" in t.lower() or "certifications" in t.lower():
+            cert_section = True
+            continue
+        if cert_section and b["style"] == "List Paragraph":
+            cv["certifications"].append(t)
+
+    # ── infer preferred job titles from title + experience ────────────────────
+    title_lower = cv["title"].lower()
+    titles = []
+    if "ai" in title_lower or "ml" in title_lower:
+        titles += ["AI Engineer", "ML Engineer", "AI/ML Engineer"]
+    if "backend" in title_lower or "full stack" in title_lower:
+        titles += ["Backend Developer", "Full Stack Developer"]
+    if "devops" in title_lower or "platform" in title_lower:
+        titles += ["DevOps Engineer", "Platform Engineer"]
+    if "frontend" in title_lower:
+        titles += ["Frontend Developer", "UI Developer"]
+    if not titles:
+        titles = ["Software Engineer", "Developer"]
+
+    cv["preferred_job_titles"] = list(dict.fromkeys(titles))  # deduplicate
+
+    # ── preferred location (default to Deutschland for now) ───────────────────
+    for text in texts:
+        if "deutschland" in text.lower() or "germany" in text.lower():
+            cv["preferred_location"] = "Deutschland"
+            break
+    if not cv["preferred_location"]:
+        cv["preferred_location"] = "Deutschland"
 
     return cv
 
 
-if __name__ == "__main__":
-    cv = parse_cv("cv.docx")
-    with open("cv.json", "w", encoding="utf-8") as f:
+def parse_and_save(docx_path: str, output_path: str) -> dict:
+    """Parse CV and save to JSON file. Returns the cv dict."""
+    cv = parse_cv_from_docx(docx_path)
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(cv, f, indent=2, ensure_ascii=False)
-    print("✅ cv.json created successfully!")
-    print(f"   Skills found: {sum(len(v) for v in cv['skills'].values())} total")
-    print(f"   Experience entries: {len(cv['experience'])}")
-    print(f"   Projects: {len(cv['projects'])}")
-    print(f"   Certifications: {len(cv['certifications'])}")
+    return cv
+
+
+# ── test run ──────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import sys
+    path = sys.argv[1] if len(sys.argv) > 1 else "cv.docx"
+    cv   = parse_and_save(path, "cv.json")
+    print(f"✅ Parsed: {cv['name']} — {cv['title']}")
+    print(f"   Skills: {sum(len(v) for v in cv['skills'].values())} total")
+    print(f"   Experience: {len(cv['experience'])} roles")

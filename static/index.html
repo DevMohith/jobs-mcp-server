@@ -3,267 +3,210 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Job Matcher MCP Agent</title>
+  <title>Job Matcher — MCP Agent</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
-      min-height: 100vh;
-      padding: 32px 16px;
+      background: #0f1117; color: #e2e8f0;
+      min-height: 100vh; padding: 32px 16px;
     }
-
     .container { max-width: 860px; margin: 0 auto; }
 
     /* header */
     .header { text-align: center; margin-bottom: 40px; }
     .header h1 { font-size: 28px; font-weight: 600; color: #fff; }
     .header p  { color: #94a3b8; margin-top: 8px; font-size: 15px; }
-
-    /* MCP badge */
     .mcp-flow {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 16px;
-      flex-wrap: wrap;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; margin-top: 16px; flex-wrap: wrap;
     }
-    .badge {
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .badge-teal   { background: #0f4c3a; color: #4ade80; border: 1px solid #166534; }
-    .badge-purple { background: #2e1065; color: #a78bfa; border: 1px solid #4c1d95; }
-    .badge-coral  { background: #4c1d1d; color: #fca5a5; border: 1px solid #7f1d1d; }
-    .badge-gray   { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
-    .arrow { color: #475569; font-size: 14px; }
+    .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-teal   { background:#0f4c3a; color:#4ade80; border:1px solid #166534; }
+    .badge-purple { background:#2e1065; color:#a78bfa; border:1px solid #4c1d95; }
+    .badge-coral  { background:#4c1d1d; color:#fca5a5; border:1px solid #7f1d1d; }
+    .badge-gray   { background:#1e293b; color:#94a3b8; border:1px solid #334155; }
+    .arrow { color:#475569; font-size:14px; }
 
-    /* search card */
-    .search-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 28px;
-      margin-bottom: 32px;
+    /* steps */
+    .steps {
+      display: flex; gap: 8px; margin-bottom: 28px;
+      align-items: center; justify-content: center;
     }
-    .search-card h2 {
-      font-size: 16px;
-      font-weight: 500;
-      color: #cbd5e1;
-      margin-bottom: 20px;
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #1e293b; border: 1px solid #334155;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: #64748b;
     }
+    .step.active .step-num { background:#6366f1; border-color:#6366f1; color:#fff; }
+    .step.active           { color: #e2e8f0; }
+    .step.done .step-num   { background:#166534; border-color:#166534; color:#4ade80; }
+    .step-div { width: 32px; height: 1px; background: #334155; }
 
+    /* cards */
+    .card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 28px; margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; font-weight: 500; color: #cbd5e1; margin-bottom: 20px; }
+    .card.hidden { display: none; }
+
+    /* upload zone */
+    .upload-zone {
+      border: 2px dashed #334155; border-radius: 10px;
+      padding: 40px 20px; text-align: center;
+      cursor: pointer; transition: all 0.2s; background: #0f1117;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #6366f1; background: #1a1040;
+    }
+    .upload-icon { font-size: 36px; margin-bottom: 12px; }
+    .upload-text { font-size: 15px; color: #94a3b8; margin-bottom: 6px; }
+    .upload-sub  { font-size: 12px; color: #475569; }
+    #fileInput   { display: none; }
+
+    /* cv confirmed */
+    .cv-confirmed {
+      display: none; background: #0f2a1a;
+      border: 1px solid #166534; border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .cv-confirmed.visible { display: flex; align-items: center; gap: 12px; }
+    .cv-confirmed-text { flex: 1; }
+    .cv-confirmed-name { font-size: 15px; font-weight: 500; color: #4ade80; }
+    .cv-confirmed-meta { font-size: 13px; color: #86efac; margin-top: 2px; }
+    .btn-reupload {
+      background: transparent; border: 1px solid #166534;
+      color: #4ade80; border-radius: 6px; padding: 6px 14px;
+      font-size: 12px; cursor: pointer;
+    }
+    .btn-reupload:hover { background: #166534; }
+
+    /* form */
     .form-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      align-items: flex-end;
+      display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
     }
-
     .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
     .form-group label { font-size: 13px; color: #94a3b8; }
-
     input, select {
-      background: #0f1117;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #e2e8f0;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
+      background: #0f1117; border: 1px solid #334155;
+      border-radius: 8px; padding: 10px 14px;
+      color: #e2e8f0; font-size: 14px; outline: none; transition: border-color 0.2s;
     }
     input:focus, select:focus { border-color: #6366f1; }
     select option { background: #1e293b; }
 
-    .btn-search {
-      background: #6366f1;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 28px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
+    .btn {
+      border: none; border-radius: 8px; padding: 10px 28px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background 0.2s; white-space: nowrap;
     }
-    .btn-search:hover    { background: #4f46e5; }
-    .btn-search:disabled { background: #334155; cursor: not-allowed; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover    { background: #4f46e5; }
+    .btn-primary:disabled { background: #334155; cursor: not-allowed; }
 
-    /* status / log */
+    /* status */
     .status {
-      background: #0f1117;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 20px;
-      font-size: 13px;
-      color: #94a3b8;
-      display: none;
+      background: #0f1117; border: 1px solid #334155;
+      border-radius: 8px; padding: 16px; margin-top: 20px;
+      font-size: 13px; color: #94a3b8; display: none;
     }
     .status.visible { display: block; }
-    .status-line { margin-bottom: 4px; }
-    .status-line.done { color: #4ade80; }
-    .status-line.tool { color: #a78bfa; }
+    .status-line         { margin-bottom: 4px; }
+    .status-line.done    { color: #4ade80; }
+    .status-line.tool    { color: #a78bfa; }
 
-    /* results */
+    /* results header */
     .results-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 16px;
     }
     .results-header h2 { font-size: 18px; font-weight: 600; }
     .results-meta { font-size: 13px; color: #64748b; }
 
+    /* summary bar */
+    .summary-bar {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 8px; padding: 14px 20px;
+      font-size: 14px; color: #94a3b8; margin-bottom: 24px;
+    }
+
     /* job card */
     .job-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 16px;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 24px; margin-bottom: 16px;
       transition: border-color 0.2s;
     }
     .job-card:hover { border-color: #6366f1; }
-
     .job-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 12px; margin-bottom: 12px;
     }
-
     .job-rank {
-      font-size: 11px;
-      font-weight: 600;
-      color: #6366f1;
-      background: #1e1b4b;
-      border: 1px solid #3730a3;
-      border-radius: 6px;
-      padding: 2px 8px;
-      white-space: nowrap;
+      font-size: 11px; font-weight: 600; color: #6366f1;
+      background: #1e1b4b; border: 1px solid #3730a3;
+      border-radius: 6px; padding: 2px 8px; white-space: nowrap;
     }
-
-    .job-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #f1f5f9;
-      flex: 1;
-    }
-
-    .match-score {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 120px;
-    }
+    .job-title { font-size: 16px; font-weight: 600; color: #f1f5f9; flex: 1; }
+    .match-score { display: flex; align-items: center; gap: 8px; min-width: 120px; }
     .score-bar-bg {
-      flex: 1;
-      height: 6px;
-      background: #334155;
-      border-radius: 3px;
-      overflow: hidden;
+      flex: 1; height: 6px; background: #334155;
+      border-radius: 3px; overflow: hidden;
     }
     .score-bar-fill {
-      height: 100%;
-      border-radius: 3px;
+      height: 100%; border-radius: 3px;
       background: linear-gradient(90deg, #6366f1, #8b5cf6);
     }
-    .score-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #a78bfa;
-      min-width: 36px;
-      text-align: right;
-    }
-
-    .job-meta {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .job-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #94a3b8;
-    }
-    .job-meta-item span { font-size: 15px; }
-
+    .score-label { font-size: 13px; font-weight: 600; color: #a78bfa; min-width: 36px; text-align: right; }
+    .job-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .job-meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #94a3b8; }
     .match-reason {
-      background: #0f172a;
-      border-left: 3px solid #6366f1;
-      border-radius: 4px;
-      padding: 10px 14px;
-      font-size: 13px;
-      color: #cbd5e1;
-      margin-bottom: 14px;
+      background: #0f172a; border-left: 3px solid #6366f1;
+      border-radius: 4px; padding: 10px 14px;
+      font-size: 13px; color: #cbd5e1; margin-bottom: 14px;
     }
-
-    .job-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .job-footer { display: flex; justify-content: space-between; align-items: center; }
     .posted-date { font-size: 12px; color: #475569; }
-
     .btn-apply {
-      background: transparent;
-      border: 1px solid #6366f1;
-      color: #6366f1;
-      border-radius: 8px;
-      padding: 7px 18px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
+      background: transparent; border: 1px solid #6366f1;
+      color: #6366f1; border-radius: 8px; padding: 7px 18px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      text-decoration: none; transition: all 0.2s;
     }
     .btn-apply:hover { background: #6366f1; color: #fff; }
 
-    /* summary bar */
-    .summary-bar {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 14px 20px;
-      font-size: 14px;
-      color: #94a3b8;
-      margin-bottom: 24px;
+    /* pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; margin-top: 24px; padding-bottom: 40px; flex-wrap: wrap;
     }
-    .summary-bar strong { color: #e2e8f0; }
+    .page-btn {
+      background: #1e293b; border: 1px solid #334155;
+      color: #94a3b8; border-radius: 8px;
+      padding: 8px 16px; font-size: 13px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .page-btn:hover:not(.disabled) { border-color: #6366f1; color: #6366f1; }
+    .page-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .page-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-num { min-width: 36px; text-align: center; }
+    .page-info { font-size: 13px; color: #475569; padding: 0 8px; }
 
     /* error */
     .error-box {
-      background: #450a0a;
-      border: 1px solid #7f1d1d;
-      border-radius: 8px;
-      padding: 16px;
-      color: #fca5a5;
-      font-size: 14px;
+      background: #450a0a; border: 1px solid #7f1d1d;
+      border-radius: 8px; padding: 16px; color: #fca5a5; font-size: 14px;
     }
 
     /* spinner */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid #334155;
-      border-top-color: #6366f1;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 8px;
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #334155; border-top-color: #6366f1;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle; margin-right: 8px;
     }
   </style>
 </head>
@@ -272,24 +215,75 @@
 
   <!-- header -->
   <div class="header">
-    <h1>Job&CV Matcher Agent</h1>
-    <p>Powered by MCP — Gemini reads your CV and finds matching jobs</p>
+    <h1>🤖 Job Matcher Agent</h1>
+    <p>Upload your CV — Gemini reads it via MCP and finds matching jobs</p>
+    <div class="mcp-flow">
+      <span class="badge badge-teal">Your CV</span>
+      <span class="arrow">→</span>
+      <span class="badge badge-purple">MCP Client</span>
+      <span class="arrow">→</span>
+      <span class="badge badge-coral">CV Server</span>
+      <span class="arrow">+</span>
+      <span class="badge badge-coral">Jobs Server</span>
+      <span class="arrow">→</span>
+      <span class="badge badge-gray">Adzuna API</span>
+    </div>
+  </div>
 
-  <!-- search form -->
-  <div class="search-card">
-    <h2>Search Parameters</h2>
+  <!-- step indicators -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="step-num">1</div>
+      <span>Upload CV</span>
+    </div>
+    <div class="step-div"></div>
+    <div class="step" id="step2">
+      <div class="step-num">2</div>
+      <span>Set Location</span>
+    </div>
+    <div class="step-div"></div>
+    <div class="step" id="step3">
+      <div class="step-num">3</div>
+      <span>View Matches</span>
+    </div>
+  </div>
+
+  <!-- STEP 1: Upload CV -->
+  <div class="card" id="uploadCard">
+    <h2>Step 1 — Upload your CV</h2>
+
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="onDragOver(event)"
+         ondragleave="onDragLeave(event)"
+         ondrop="onDrop(event)">
+      <div class="upload-icon">📄</div>
+      <div class="upload-text">Click to upload or drag & drop</div>
+      <div class="upload-sub">Supports .docx files only</div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".docx" onchange="handleFileSelect(event)"/>
+
+    <div class="status" id="uploadStatus"></div>
+
+    <div class="cv-confirmed" id="cvConfirmed">
+      <div style="font-size:28px">✅</div>
+      <div class="cv-confirmed-text">
+        <div class="cv-confirmed-name" id="cvName"></div>
+        <div class="cv-confirmed-meta" id="cvMeta"></div>
+      </div>
+      <button class="btn-reupload" onclick="resetUpload()">Upload different CV</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Search -->
+  <div class="card hidden" id="searchCard">
+    <h2>Step 2 — Find matching jobs</h2>
     <div class="form-row">
-
       <div class="form-group">
         <label>Location</label>
-        <input
-          type="text"
-          id="location"
-          placeholder="e.g. Munich, Berlin, Frankfurt"
-          value="Munich"
-        />
+        <input type="text" id="location" placeholder="e.g. Munich, Berlin, Frankfurt" value="Munich"/>
       </div>
-
       <div class="form-group">
         <label>Posted within</label>
         <select id="days">
@@ -303,127 +297,199 @@
           <option value="24">Last 24 days</option>
         </select>
       </div>
-
-      <button class="btn-search" id="searchBtn" onclick="startSearch()">
+      <button class="btn btn-primary" id="searchBtn" onclick="startSearch()">
         Find Jobs
       </button>
-
     </div>
-
-    <!-- live status log — shows what Gemini is doing -->
-    <div class="status" id="status"></div>
+    <div class="status" id="searchStatus"></div>
   </div>
 
-  <!-- results -->
+  <!-- STEP 3: Results -->
   <div id="results"></div>
 
 </div>
 
 <script>
-  async function startSearch() {
-    const location = document.getElementById("location").value.trim();
-    const daysVal  = document.getElementById("days").value;
+  // ── state ──────────────────────────────────────────────────────────────────
+  let sessionId   = null;
+  let allMatches  = [];
+  let currentPage = 1;
+  let lastData    = null;
+  const PAGE_SIZE = 5;
 
-    if (!location) {
-      alert("Please enter a location");
+  // ── drag and drop ──────────────────────────────────────────────────────────
+  function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById("uploadZone").classList.add("drag-over");
+  }
+  function onDragLeave(e) {
+    document.getElementById("uploadZone").classList.remove("drag-over");
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById("uploadZone").classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) uploadCV(file);
+  }
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) uploadCV(file);
+  }
+
+  // ── upload CV ──────────────────────────────────────────────────────────────
+  async function uploadCV(file) {
+    if (!file.name.endsWith(".docx")) {
+      alert("Please upload a .docx file");
       return;
     }
 
-    const btn    = document.getElementById("searchBtn");
-    const status = document.getElementById("status");
+    const status = document.getElementById("uploadStatus");
+    status.className = "status visible";
+    status.innerHTML = '<div class="status-line tool"><span class="spinner"></span>Parsing your CV...</div>';
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res  = await fetch("/upload-cv", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Upload failed");
+
+      sessionId = data.session_id;
+
+      status.innerHTML  = "";
+      status.className  = "status";
+
+      document.getElementById("cvName").textContent    = `${data.name} — ${data.title}`;
+      document.getElementById("cvMeta").textContent    = `${data.skills_count} skills detected · Ready to search`;
+      document.getElementById("cvConfirmed").className = "cv-confirmed visible";
+      document.getElementById("uploadZone").style.display = "none";
+
+      setStep(2);
+      document.getElementById("searchCard").classList.remove("hidden");
+
+    } catch (err) {
+      status.innerHTML = `<div class="status-line" style="color:#fca5a5">❌ ${err.message}</div>`;
+    }
+  }
+
+  function resetUpload() {
+    sessionId   = null;
+    allMatches  = [];
+    currentPage = 1;
+    lastData    = null;
+    document.getElementById("cvConfirmed").className    = "cv-confirmed";
+    document.getElementById("uploadZone").style.display = "block";
+    document.getElementById("fileInput").value          = "";
+    document.getElementById("searchCard").classList.add("hidden");
+    document.getElementById("results").innerHTML        = "";
+    setStep(1);
+  }
+
+  // ── search ─────────────────────────────────────────────────────────────────
+  async function startSearch() {
+    if (!sessionId) { alert("Please upload your CV first"); return; }
+
+    const location = document.getElementById("location").value.trim();
+    const daysVal  = document.getElementById("days").value;
+    if (!location) { alert("Please enter a location"); return; }
+
+    const btn     = document.getElementById("searchBtn");
+    const status  = document.getElementById("searchStatus");
     const results = document.getElementById("results");
 
-    // reset UI
-    btn.disabled    = true;
-    btn.innerHTML   = '<span class="spinner"></span>Agent running...';
+    btn.disabled      = true;
+    btn.innerHTML     = '<span class="spinner"></span>Agent running...';
     results.innerHTML = "";
     status.className  = "status visible";
     status.innerHTML  = "";
 
-    // show what the agent is doing step by step
     const steps = [
-      { text: "🔌 Connecting to CV MCP Server and Jobs MCP Server...", delay: 0 },
-      { text: "📋 Getting your CV skills and preferences...", delay: 800 },
-      { text: "🔍 Searching jobs by skills...", delay: 2000 },
-      { text: "🔍 Searching jobs by title...", delay: 3500 },
-      { text: "🧠 Gemini ranking matches against your CV...", delay: 5500 },
+      { text: "🔌 Connecting to CV MCP Server and Jobs MCP Server...", delay: 0    },
+      { text: "📋 Reading your CV skills and preferences...",           delay: 800  },
+      { text: "🔍 Searching jobs matching your skills...",              delay: 2000 },
+      { text: "🔍 Searching jobs by your preferred titles...",          delay: 3500 },
+      { text: "🧠 Gemini ranking top 10 matches against your CV...",    delay: 5500 },
     ];
 
     steps.forEach(({ text, delay }) => {
       setTimeout(() => {
         const line = document.createElement("div");
-        line.className = "status-line tool";
+        line.className   = "status-line tool";
         line.textContent = text;
         status.appendChild(line);
       }, delay);
     });
 
     try {
-      const payload = {
-        location,
-        max_days_old: daysVal ? parseInt(daysVal) : null
-      };
-
-      const response = await fetch("/search", {
+      const res = await fetch("/search", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload)
+        body: JSON.stringify({
+          session_id:   sessionId,
+          location,
+          max_days_old: daysVal ? parseInt(daysVal) : null
+        })
       });
 
-      const data = await response.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Search failed");
 
-      // done status
       const doneLine = document.createElement("div");
-      doneLine.className = "status-line done";
-      doneLine.textContent = "✅ Done! Rendering results...";
+      doneLine.className   = "status-line done";
+      doneLine.textContent = `✅ Done! Found ${(data.top_matches||[]).length} matches.`;
       status.appendChild(doneLine);
 
-      setTimeout(() => renderResults(data), 300);
+      setStep(3);
+      lastData    = data;
+      allMatches  = data.top_matches || [];
+      currentPage = 1;
+      setTimeout(() => renderPage(), 300);
 
     } catch (err) {
-      results.innerHTML = `
-        <div class="error-box">
-          ❌ Error: ${err.message}<br/>
-          Make sure the server is running and your API keys are set.
-        </div>`;
+      results.innerHTML = `<div class="error-box">❌ ${err.message}</div>`;
     } finally {
       btn.disabled  = false;
       btn.innerHTML = "Find Jobs";
     }
   }
 
-  function renderResults(data) {
-    const results = document.getElementById("results");
+  // ── render one page of results ─────────────────────────────────────────────
+  function renderPage() {
+    const results    = document.getElementById("results");
+    const total      = allMatches.length;
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    const start      = (currentPage - 1) * PAGE_SIZE;
+    const end        = Math.min(start + PAGE_SIZE, total);
+    const pageItems  = allMatches.slice(start, end);
 
-    if (data.error) {
-      results.innerHTML = `<div class="error-box">❌ ${data.error}<br/><pre style="margin-top:8px;font-size:11px;opacity:0.7">${data.raw || ""}</pre></div>`;
-      return;
-    }
-
-    const matches = data.top_matches || [];
-    if (!matches.length) {
+    if (!total) {
       results.innerHTML = `<div class="error-box">No matches found. Try a different location or time filter.</div>`;
       return;
     }
 
-    // summary bar
     let html = `
       <div class="results-header">
-        <h2>Top Matches for ${data.candidate_name || "You"}</h2>
-        <span class="results-meta">${data.search_location} · ${data.time_filter}</span>
+        <h2>Top Matches for ${lastData.candidate_name || "You"}</h2>
+        <span class="results-meta">${lastData.search_location} · ${lastData.time_filter}</span>
       </div>
-      <div class="summary-bar">${data.summary || ""}</div>
+      <div class="summary-bar">
+        ${lastData.summary || ""}
+        &nbsp;·&nbsp;
+        <strong style="color:#e2e8f0">Showing ${start + 1}–${end} of ${total}</strong>
+      </div>
     `;
 
     // job cards
-    matches.forEach(job => {
-      const salary = (job.salary && job.salary !== "Not specified")
-        ? `💰 ${job.salary}`
-        : "💰 Salary not listed";
-
+    pageItems.forEach(job => {
       const posted = job.posted
-        ? new Date(job.posted).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })
+        ? new Date(job.posted).toLocaleDateString("en-GB", {
+            day: "numeric", month: "short", year: "numeric"
+          })
         : "Date unknown";
+
+      const salary = (job.salary && job.salary !== "Not specified")
+        ? job.salary : "Not listed";
 
       html += `
         <div class="job-card">
@@ -437,17 +503,12 @@
               <span class="score-label">${job.match_score}%</span>
             </div>
           </div>
-
           <div class="job-meta">
-            <div class="job-meta-item"><span>🏢</span> ${job.company}</div>
-            <div class="job-meta-item"><span>📍</span> ${job.location}</div>
-            <div class="job-meta-item"><span>💰</span> ${job.salary && job.salary !== "Not specified" ? job.salary : "Not listed"}</div>
+            <div class="job-meta-item">🏢 ${job.company}</div>
+            <div class="job-meta-item">📍 ${job.location}</div>
+            <div class="job-meta-item">💰 ${salary}</div>
           </div>
-
-          <div class="match-reason">
-            🎯 ${job.match_reason}
-          </div>
-
+          <div class="match-reason">🎯 ${job.match_reason}</div>
           <div class="job-footer">
             <span class="posted-date">Posted: ${posted}</span>
             <a class="btn-apply" href="${job.url}" target="_blank">View Job →</a>
@@ -456,12 +517,66 @@
       `;
     });
 
+    // pagination controls
+    if (totalPages > 1) {
+      html += `<div class="pagination">`;
+
+      html += `
+        <button class="page-btn ${currentPage === 1 ? 'disabled' : ''}"
+                onclick="changePage(-1)"
+                ${currentPage === 1 ? 'disabled' : ''}>
+          ← Prev
+        </button>
+      `;
+
+      for (let i = 1; i <= totalPages; i++) {
+        html += `
+          <button class="page-btn page-num ${i === currentPage ? 'active' : ''}"
+                  onclick="goToPage(${i})">
+            ${i}
+          </button>
+        `;
+      }
+
+      html += `
+        <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+        <button class="page-btn ${currentPage === totalPages ? 'disabled' : ''}"
+                onclick="changePage(1)"
+                ${currentPage === totalPages ? 'disabled' : ''}>
+          Next →
+        </button>
+      `;
+
+      html += `</div>`;
+    }
+
     results.innerHTML = html;
+    results.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // allow Enter key to trigger search
+  function changePage(dir) {
+    const totalPages = Math.ceil(allMatches.length / PAGE_SIZE);
+    const newPage    = currentPage + dir;
+    if (newPage < 1 || newPage > totalPages) return;
+    currentPage = newPage;
+    renderPage();
+  }
+
+  function goToPage(n) {
+    currentPage = n;
+    renderPage();
+  }
+
+  // ── step indicator ─────────────────────────────────────────────────────────
+  function setStep(n) {
+    [1, 2, 3].forEach(i => {
+      const el = document.getElementById(`step${i}`);
+      el.className = i < n ? "step done" : i === n ? "step active" : "step";
+    });
+  }
+
   document.addEventListener("keydown", e => {
-    if (e.key === "Enter") startSearch();
+    if (e.key === "Enter" && sessionId) startSearch();
   });
 </script>
 </body>

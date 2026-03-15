@@ -140,7 +140,7 @@ def mcp_tool_to_vertexai(tool) -> FunctionDeclaration:
     
 # ── MAIN AGENT FUNCTION ───────────────────────────────────────────────────────
 
-async def run_job_agent(location: str, max_days_old: int = None) -> dict:
+async def run_job_agent(location: str, max_days_old: int = None, cv_path: str = None) -> dict:
     """
     Full agent flow:
     1. Connect to both MCP servers
@@ -162,15 +162,16 @@ You are a job matching agent. Find the best matching jobs for this candidate.
 Follow these steps IN ORDER:
 1. Call get_cv_skills() to get the candidate's technical skills
 2. Call get_cv_preferences() to get preferred job titles and location
-3. Call search_jobs_by_skills() using top skills and location="{location}"
-4. Call search_jobs_by_title() for each preferred job title with location="{location}"
-5. Rank the top 5 jobs by match quality against the CV skills and experience
+3. Call search_jobs_by_skills() using top skills and location="{location}", count=20
+4. Call search_jobs_by_title() for each preferred job title with location="{location}", count=20
+5. Analyze ALL jobs found, rank the top 10 by match quality against the CV
 6. Return ONLY this exact JSON structure, no extra text:
 
 {{
     "candidate_name": "...",
     "search_location": "{location}",
     "time_filter": "{time_filter_text}",
+    "total_jobs_analyzed": 0,
     "top_matches": [
         {{
             "rank": 1,
@@ -184,9 +185,10 @@ Follow these steps IN ORDER:
             "posted": "..."
         }}
     ],
-    "summary": "Found X jobs. Top match is Y at Z company."
+    "summary": "Found X jobs, top match is Y at Z company"
 }}
 
+IMPORTANT: Return exactly 10 items in top_matches, ranked 1 to 10.
 {time_filter_text}
 Search location: {location}
 """
@@ -196,10 +198,15 @@ Search location: {location}
     # env=None means the subprocess gets NO environment — dotenv won't work
     current_env = os.environ.copy()
 
+    # inject the user's cv path into the CV server's environment
+    # CV server reads CV_PATH env var to know which cv.json to load
+    if cv_path:
+        current_env["CV_PATH"] = cv_path
+
     cv_server_params = StdioServerParameters(
         command=sys.executable,
         args=[CV_SERVER],
-        env=current_env      # ← pass full environment including .env values
+        env=current_env      # ← CV_PATH is now inside this env
     )
 
     job_server_params = StdioServerParameters(
