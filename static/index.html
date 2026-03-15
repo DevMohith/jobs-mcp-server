@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Job Matcher MCP Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* header */
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { font-size: 28px; font-weight: 600; color: #fff; }
+    .header p  { color: #94a3b8; margin-top: 8px; font-size: 15px; }
+
+    /* MCP badge */
+    .mcp-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge-teal   { background: #0f4c3a; color: #4ade80; border: 1px solid #166534; }
+    .badge-purple { background: #2e1065; color: #a78bfa; border: 1px solid #4c1d95; }
+    .badge-coral  { background: #4c1d1d; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .badge-gray   { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .arrow { color: #475569; font-size: 14px; }
+
+    /* search card */
+    .search-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+    .search-card h2 {
+      font-size: 16px;
+      font-weight: 500;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+    .form-group label { font-size: 13px; color: #94a3b8; }
+
+    input, select {
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: #6366f1; }
+    select option { background: #1e293b; }
+
+    .btn-search {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 28px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-search:hover    { background: #4f46e5; }
+    .btn-search:disabled { background: #334155; cursor: not-allowed; }
+
+    /* status / log */
+    .status {
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #94a3b8;
+      display: none;
+    }
+    .status.visible { display: block; }
+    .status-line { margin-bottom: 4px; }
+    .status-line.done { color: #4ade80; }
+    .status-line.tool { color: #a78bfa; }
+
+    /* results */
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .results-header h2 { font-size: 18px; font-weight: 600; }
+    .results-meta { font-size: 13px; color: #64748b; }
+
+    /* job card */
+    .job-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .job-card:hover { border-color: #6366f1; }
+
+    .job-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .job-rank {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6366f1;
+      background: #1e1b4b;
+      border: 1px solid #3730a3;
+      border-radius: 6px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .job-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+      flex: 1;
+    }
+
+    .match-score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 120px;
+    }
+    .score-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    }
+    .score-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #a78bfa;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .job-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .job-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .job-meta-item span { font-size: 15px; }
+
+    .match-reason {
+      background: #0f172a;
+      border-left: 3px solid #6366f1;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 14px;
+    }
+
+    .job-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .posted-date { font-size: 12px; color: #475569; }
+
+    .btn-apply {
+      background: transparent;
+      border: 1px solid #6366f1;
+      color: #6366f1;
+      border-radius: 8px;
+      padding: 7px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-apply:hover { background: #6366f1; color: #fff; }
+
+    /* summary bar */
+    .summary-bar {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+    .summary-bar strong { color: #e2e8f0; }
+
+    /* error */
+    .error-box {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 16px;
+      color: #fca5a5;
+      font-size: 14px;
+    }
+
+    /* spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #334155;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- header -->
+  <div class="header">
+    <h1>Job&CV Matcher Agent</h1>
+    <p>Powered by MCP — Gemini reads your CV and finds matching jobs</p>
+
+  <!-- search form -->
+  <div class="search-card">
+    <h2>Search Parameters</h2>
+    <div class="form-row">
+
+      <div class="form-group">
+        <label>Location</label>
+        <input
+          type="text"
+          id="location"
+          placeholder="e.g. Munich, Berlin, Frankfurt"
+          value="Munich"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>Posted within</label>
+        <select id="days">
+          <option value="">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="2">Last 2 days</option>
+          <option value="5" selected>Last 5 days</option>
+          <option value="10">Last 10 days</option>
+          <option value="15">Last 15 days</option>
+          <option value="18">Last 18 days</option>
+          <option value="24">Last 24 days</option>
+        </select>
+      </div>
+
+      <button class="btn-search" id="searchBtn" onclick="startSearch()">
+        Find Jobs
+      </button>
+
+    </div>
+
+    <!-- live status log — shows what Gemini is doing -->
+    <div class="status" id="status"></div>
+  </div>
+
+  <!-- results -->
+  <div id="results"></div>
+
+</div>
+
+<script>
+  async function startSearch() {
+    const location = document.getElementById("location").value.trim();
+    const daysVal  = document.getElementById("days").value;
+
+    if (!location) {
+      alert("Please enter a location");
+      return;
+    }
+
+    const btn    = document.getElementById("searchBtn");
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+
+    // reset UI
+    btn.disabled    = true;
+    btn.innerHTML   = '<span class="spinner"></span>Agent running...';
+    results.innerHTML = "";
+    status.className  = "status visible";
+    status.innerHTML  = "";
+
+    // show what the agent is doing step by step
+    const steps = [
+      { text: "🔌 Connecting to CV MCP Server and Jobs MCP Server...", delay: 0 },
+      { text: "📋 Getting your CV skills and preferences...", delay: 800 },
+      { text: "🔍 Searching jobs by skills...", delay: 2000 },
+      { text: "🔍 Searching jobs by title...", delay: 3500 },
+      { text: "🧠 Gemini ranking matches against your CV...", delay: 5500 },
+    ];
+
+    steps.forEach(({ text, delay }) => {
+      setTimeout(() => {
+        const line = document.createElement("div");
+        line.className = "status-line tool";
+        line.textContent = text;
+        status.appendChild(line);
+      }, delay);
+    });
+
+    try {
+      const payload = {
+        location,
+        max_days_old: daysVal ? parseInt(daysVal) : null
+      };
+
+      const response = await fetch("/search", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      // done status
+      const doneLine = document.createElement("div");
+      doneLine.className = "status-line done";
+      doneLine.textContent = "✅ Done! Rendering results...";
+      status.appendChild(doneLine);
+
+      setTimeout(() => renderResults(data), 300);
+
+    } catch (err) {
+      results.innerHTML = `
+        <div class="error-box">
+          ❌ Error: ${err.message}<br/>
+          Make sure the server is running and your API keys are set.
+        </div>`;
+    } finally {
+      btn.disabled  = false;
+      btn.innerHTML = "Find Jobs";
+    }
+  }
+
+  function renderResults(data) {
+    const results = document.getElementById("results");
+
+    if (data.error) {
+      results.innerHTML = `<div class="error-box">❌ ${data.error}<br/><pre style="margin-top:8px;font-size:11px;opacity:0.7">${data.raw || ""}</pre></div>`;
+      return;
+    }
+
+    const matches = data.top_matches || [];
+    if (!matches.length) {
+      results.innerHTML = `<div class="error-box">No matches found. Try a different location or time filter.</div>`;
+      return;
+    }
+
+    // summary bar
+    let html = `
+      <div class="results-header">
+        <h2>Top Matches for ${data.candidate_name || "You"}</h2>
+        <span class="results-meta">${data.search_location} · ${data.time_filter}</span>
+      </div>
+      <div class="summary-bar">${data.summary || ""}</div>
+    `;
+
+    // job cards
+    matches.forEach(job => {
+      const salary = (job.salary && job.salary !== "Not specified")
+        ? `💰 ${job.salary}`
+        : "💰 Salary not listed";
+
+      const posted = job.posted
+        ? new Date(job.posted).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })
+        : "Date unknown";
+
+      html += `
+        <div class="job-card">
+          <div class="job-top">
+            <span class="job-rank">#${job.rank}</span>
+            <span class="job-title">${job.title}</span>
+            <div class="match-score">
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" style="width:${job.match_score}%"></div>
+              </div>
+              <span class="score-label">${job.match_score}%</span>
+            </div>
+          </div>
+
+          <div class="job-meta">
+            <div class="job-meta-item"><span>🏢</span> ${job.company}</div>
+            <div class="job-meta-item"><span>📍</span> ${job.location}</div>
+            <div class="job-meta-item"><span>💰</span> ${job.salary && job.salary !== "Not specified" ? job.salary : "Not listed"}</div>
+          </div>
+
+          <div class="match-reason">
+            🎯 ${job.match_reason}
+          </div>
+
+          <div class="job-footer">
+            <span class="posted-date">Posted: ${posted}</span>
+            <a class="btn-apply" href="${job.url}" target="_blank">View Job →</a>
+          </div>
+        </div>
+      `;
+    });
+
+    results.innerHTML = html;
+  }
+
+  // allow Enter key to trigger search
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter") startSearch();
+  });
+</script>
+</body>
+</html>
